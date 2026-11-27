@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { getMovie } from "./api";
-import { STATUS_LABEL, detectDevice, displayTitle, formatDuration, formatRating, secondaryTitle } from "./format";
+import { STATUS_LABEL, androidVlcUrl, detectDevice, displayTitle, formatDuration, formatRating, secondaryTitle } from "./format";
 
 function kinopoiskRating(value, label) {
   const rating = formatRating(value);
@@ -138,6 +138,10 @@ export function MoviePage() {
           <a className="play" href={`/api/movies/${movie.id}/playlist.m3u`}>
             В плеер
           </a>
+        ) : device === "android" ? (
+          <a className="play" href={androidVlcUrl(movie.smb_url, movie.file_name)}>
+            В плеер
+          </a>
         ) : (
           <a className="play" href={movie.smb_url}>
             В плеер
@@ -151,7 +155,9 @@ export function MoviePage() {
         <p className="muted">
           {device === "windows"
             ? "«В плеер» скачивает короткий список для VLC или MPC-HC: файл читается с шары Keenetic. Папку вставьте в адресную строку Проводника."
-            : "Ссылки smb:// открывают файл в VLC или IINA и папку в Finder или CX Проводнике, если шара уже доступна на этом устройстве."}
+            : device === "android"
+              ? "«В плеер» открывает файл в VLC по ссылке smb://. Шара должна быть доступна на этом телефоне. «Открыть папку» — ссылка smb:// для проводника."
+              : "Ссылки smb:// открывают файл в VLC или IINA и папку в Finder или CX Проводнике, если шара уже доступна на этом устройстве."}
         </p>
         {note ? <p className="note">{note}</p> : null}
       </section>

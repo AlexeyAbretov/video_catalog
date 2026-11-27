@@ -1,8 +1,51 @@
+const VIDEO_MIME = {
+  mkv: "video/x-matroska",
+  mp4: "video/mp4",
+  m4v: "video/mp4",
+  mov: "video/quicktime",
+  avi: "video/x-msvideo",
+  wmv: "video/x-ms-wmv",
+  ts: "video/mp2t",
+};
+
 export function detectDevice() {
   const agent = navigator.userAgent || "";
-  if (/Android|iPhone|iPad|iPod/i.test(agent)) return "android";
+  if (/Android/i.test(agent)) return "android";
+  if (/iPhone|iPad|iPod/i.test(agent)) return "ios";
   if (/Macintosh|Mac OS X/i.test(agent)) return "mac";
   return "windows";
+}
+
+export function videoMime(fileName) {
+  const base = String(fileName || "").replace(/\\/g, "/").split("/").pop() || "";
+  const dot = base.lastIndexOf(".");
+  const ext = dot > 0 ? base.slice(dot + 1).toLowerCase() : "";
+  return VIDEO_MIME[ext] || "video/mp4";
+}
+
+function intentExtra(value) {
+  return encodeURIComponent(value).replace(/[!'()*]/g, (ch) => `%${ch.charCodeAt(0).toString(16).toUpperCase()}`);
+}
+
+function fileBaseName(fileName) {
+  return String(fileName || "").replace(/[\r\n]/g, " ").replace(/\\/g, "/").split("/").pop()?.trim() || "";
+}
+
+// VLC принимает smb только вместе с MIME-типом. Голая ссылка из Chrome не совпадает с фильтром, и нажатие пропадает.
+// Имя файла уходит отдельным extra: свой разбор пути плеер показывает кракозябрами.
+export function androidVlcUrl(smbUrl, fileName) {
+  let parsed;
+  try {
+    parsed = new URL(smbUrl);
+  } catch {
+    return smbUrl;
+  }
+  if (parsed.protocol !== "smb:") return smbUrl;
+  const target = `${parsed.host}${parsed.pathname}${parsed.search}`;
+  const mime = videoMime(fileName);
+  const name = fileBaseName(fileName);
+  const title = name ? `;S.title=${intentExtra(name)}` : "";
+  return `intent://${target}#Intent;action=android.intent.action.VIEW;scheme=smb;type=${mime};package=org.videolan.vlc${title};end`;
 }
 
 export function filmCount(count) {
