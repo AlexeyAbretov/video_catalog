@@ -245,6 +245,13 @@ textarea {
 .cast { list-style: none; padding: 0; }
 .cast li { margin: 8px 0; }
 .cast a { text-decoration: none; border-bottom: 1px solid var(--line); }
+.cast .tag {
+  margin-left: 8px;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1.2;
+  vertical-align: middle;
+}
 
 .pager { margin-top: 22px; }
 .pager button:disabled { opacity: 0.4; cursor: default; }
