@@ -41,16 +41,22 @@ export function ServicePage() {
   const [token, setToken] = useState(() => sessionStorage.getItem(TOKEN_KEY) || "");
   const [rawIds, setRawIds] = useState("");
   const [status, setStatus] = useState(null);
+  const [followedStart, setFollowedStart] = useState(null);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  function rememberRun(next) {
+    if (next?.running && next.started_at) setFollowedStart(next.started_at);
+    setStatus(next);
+  }
 
   useEffect(() => {
     let cancel = false;
     async function poll() {
       try {
         const next = await getScanStatus();
-        if (!cancel) setStatus(next);
+        if (!cancel) rememberRun(next);
       } catch {
         if (!cancel) setStatus(null);
       }
@@ -85,7 +91,9 @@ export function ServicePage() {
     }
     setBusy(true);
     try {
-      setResult(await resetMovies(parsed.ids, password));
+      const accepted = await resetMovies(parsed.ids, password);
+      setResult(accepted);
+      rememberRun(accepted);
     } catch (err) {
       setError(failureText(err));
     } finally {
@@ -103,7 +111,7 @@ export function ServicePage() {
     }
     setBusy(true);
     try {
-      setStatus(await startScan(password));
+      rememberRun(await startScan(password));
     } catch (err) {
       setError(failureText(err));
     } finally {
@@ -111,8 +119,22 @@ export function ServicePage() {
     }
   }
 
+  useEffect(() => {
+    if (!result?.reset?.length || !status?.started_at) return;
+    if (status.started_at !== result.started_at || status.running) return;
+    setResult((current) => {
+      if (!current?.reset?.length) return current;
+      if (!current.missing?.length) return null;
+      return { ...current, reset: [] };
+    });
+  }, [status, result]);
+
   const running = Boolean(status?.running);
   const locked = busy || running;
+  const showDone =
+    status?.phase === "done" &&
+    Boolean(status.started_at) &&
+    status.started_at === followedStart;
 
   return (
     <div className="wrap">
@@ -129,7 +151,7 @@ export function ServicePage() {
         Номер карточки копируется кнопкой «Карточка N» на странице фильма. Сброс собирает только указанные карточки заново. Полный скан заново читает шары.
       </p>
 
-      {status && (running || status.last_error || status.phase === "done") ? (
+      {status && (running || status.last_error || showDone) ? (
         <p className={status.last_error && !running ? "banner warn" : "banner"}>
           {PHASE[status.phase] || status.phase}
           {status.total ? `: ${status.enriched} карточек из ${status.total}` : ""}
@@ -166,10 +188,10 @@ export function ServicePage() {
         </div>
       </form>
 
-      {error ? <p className="banner warn">{error}</p> : null}
-      {result ? (
-        <div className="note">
-          <p>В очереди: {result.reset?.length ? result.reset.join(", ") : "ничего"}</p>
+      {error ? <p className="banner warn service-follow">{error}</p> : null}
+      {result?.reset?.length || result?.missing?.length ? (
+        <div className="note service-follow">
+          {result.reset?.length ? <p>В очереди: {result.reset.join(", ")}</p> : null}
           {result.missing?.length ? <p>Не найдены: {result.missing.join(", ")}</p> : null}
         </div>
       ) : null}

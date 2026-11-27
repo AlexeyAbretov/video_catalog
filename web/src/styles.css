@@ -117,6 +117,8 @@ textarea {
 
 .service-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
+.service-follow { margin-top: 16px; }
+
 .service button:disabled { opacity: 0.4; cursor: default; }
 
 .filters input { width: 7rem; }

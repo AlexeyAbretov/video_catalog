@@ -137,8 +137,22 @@ def _label(movie_id: int) -> str:
         db.close()
 
 
+def _known_paths(ids: list[int]) -> dict[int, str]:
+    if not ids:
+        return {}
+    db = SessionLocal()
+    try:
+        rows = db.execute(
+            select(Movie.id, Movie.relative_path).where(Movie.id.in_(ids))
+        ).all()
+    finally:
+        db.close()
+    return {movie_id: path for movie_id, path in rows}
+
+
 def _enrich_queue(movie_ids: list[int]) -> None:
-    STATE.update(phase="enriching", total=len(movie_ids), current_file=None)
+    current = _label(movie_ids[0]) if movie_ids else None
+    STATE.update(phase="enriching", total=len(movie_ids), current_file=current)
     if not movie_ids:
         return
     with httpx.Client(
@@ -239,6 +253,10 @@ def start_reset(movie_ids: list[int]) -> dict | None:
     ids = list(dict.fromkeys(movie_ids))
     if not STATE.try_start(phase="enriching"):
         return None
+    known = _known_paths(ids)
+    queued = [movie_id for movie_id in ids if movie_id in known]
+    if queued:
+        STATE.update(total=len(queued), current_file=known[queued[0]])
     try:
         reset, missing = _reset_cards(ids)
     except Exception:
