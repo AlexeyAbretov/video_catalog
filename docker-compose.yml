@@ -1,0 +1,78 @@
+name: video_catalog
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      TZ: Europe/Moscow
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  vharvest:
+    build: ./vharvest
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      OLLAMA_HOST: http://host.docker.internal:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5-coder:7b}
+      TMDB_API_KEY: ${TMDB_API_KEY}
+      KP_API_KEY: ${KP_API_KEY:-}
+      SCAN_TOKEN: ${SCAN_TOKEN}
+      SCAN_CRON: ${SCAN_CRON:-0 3 * * *}
+      SMB_HOST: ${SMB_HOST:-Keenetic-1601}
+      MIN_FILE_BYTES: ${MIN_FILE_BYTES:-52428800}
+      SHARE_MOUNTS: /media/adata=ADATA SC610;/media/kingston=KINGSTON
+      POSTER_DIR: /posters
+      TMDB_DELAY: "0.3"
+      KP_DELAY: "1.5"
+      TZ: Europe/Moscow
+    volumes:
+      - adata:/media/adata
+      - kingston:/media/kingston
+      - posters:/posters
+    extra_hosts:
+      - "${SMB_HOST:-Keenetic-1601}:${KEENETIC_IP}"
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 25s
+    restart: unless-stopped
+
+  web:
+    build: ./web
+    ports:
+      - "0.0.0.0:${WEB_PORT:-8080}:80"
+    depends_on:
+      vharvest:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  posters:
+  adata:
+    driver: local
+    driver_opts:
+      type: cifs
+      device: "//${KEENETIC_IP}/ADATA SC610"
+      o: "username=${SMB_LOGIN},password=${SMB_PASSWORD},vers=${SMB_VERS:-3.0},iocharset=utf8,ro,noperm,noserverino,file_mode=0444,dir_mode=0555"
+  kingston:
+    driver: local
+    driver_opts:
+      type: cifs
+      device: "//${KEENETIC_IP}/KINGSTON"
+      o: "username=${SMB_LOGIN},password=${SMB_PASSWORD},vers=${SMB_VERS:-3.0},iocharset=utf8,ro,noperm,noserverino,file_mode=0444,dir_mode=0555"
