@@ -3,6 +3,12 @@ import { Link, useLocation, useParams } from "react-router-dom";
 import { getMovie } from "./api";
 import { STATUS_LABEL, detectDevice, displayTitle, formatDuration, formatRating, secondaryTitle } from "./format";
 
+function kinopoiskRating(value, label) {
+  const rating = formatRating(value);
+  if (rating) return `${label} ${rating}`;
+  return <strong>{label} N/A</strong>;
+}
+
 export function MoviePage() {
   const { id } = useParams();
   const location = useLocation();
@@ -60,7 +66,7 @@ export function MoviePage() {
     movie.year,
     movie.file_year && movie.file_year !== movie.year ? `в файле ${movie.file_year}` : "",
     formatDuration(movie.duration_sec),
-    formatRating(movie.rating_kp) ? `Кинопоиск ${formatRating(movie.rating_kp)}` : "",
+    kinopoiskRating(movie.rating_kp, "Кинопоиск"),
     formatRating(movie.rating_tmdb) ? `TMDB ${formatRating(movie.rating_tmdb)}` : "",
     movie.share_name,
   ].filter(Boolean);
@@ -94,7 +100,12 @@ export function MoviePage() {
             <button type="button" className="text-button" onClick={copyId}>
               Карточка {movie.id}
             </button>
-            {meta.length ? ` · ${meta.join(" · ")}` : ""}
+            {meta.map((part, index) => (
+              <span key={index}>
+                {" · "}
+                {part}
+              </span>
+            ))}
           </p>
           <div className="genre-row">
             {movie.genres.map((genre) => (

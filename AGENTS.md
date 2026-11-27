@@ -24,7 +24,9 @@
 | `web/src/Catalog.jsx` | Список и фильтры |
 | `web/src/MoviePage.jsx` | Карточка и кнопки плеера |
 | `web/src/ServicePage.jsx` | Скан и сброс по паролю |
-| `web/nginx.conf` | Статика и прокси `/api/` |
+| `web/vite.config.js` | Сборка страниц, манифест и service worker |
+| `web/nginx.conf` | Статика, service worker, HTTPS и прокси `/api/` |
+| `web/docker-entrypoint.d/40-certs.sh` | Сертификат сайта и удостоверяющий центр |
 | `docker-compose.yml` | Postgres, `vharvest`, `web`, тома шар |
 
 ## Как менять
@@ -55,7 +57,7 @@ python -m unittest discover -s tests
 - Не понижать пороги `classify`, чтобы сомнительное имя стало `matched`.
 - Не ставить вход на каталог. Токен закрывает только скан и сброс.
 - Не переносить Ollama в Compose.
-- Не коммитить `.env` и не писать пароль шары, ключи API и `SCAN_TOKEN` в лог.
+- Не коммитить `.env` и `certs/`. Не писать в лог пароль шары, ключи API, `SCAN_TOKEN` и ключ удостоверяющего центра.
 
 ## Правила Cursor
 

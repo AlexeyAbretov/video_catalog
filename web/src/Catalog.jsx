@@ -3,6 +3,12 @@ import { Link, useSearchParams } from "react-router-dom";
 import { getActorsByIds, getGenres, getMovies, getScanStatus, getYears, searchActors } from "./api";
 import { STATUS_LABEL, displayTitle, filmCount, formatDuration, formatRating, secondaryTitle } from "./format";
 
+function kinopoiskRating(value, label) {
+  const rating = formatRating(value);
+  if (rating) return `${label} ${rating}`;
+  return <strong>{label} N/A</strong>;
+}
+
 function readFilters(params) {
   return {
     yearFrom: params.get("year_from") || "",
@@ -316,7 +322,7 @@ export function Catalog() {
             movie.year,
             movie.file_year && movie.file_year !== movie.year ? `в файле ${movie.file_year}` : "",
             formatDuration(movie.duration_sec),
-            formatRating(movie.rating_kp) ? `КП ${formatRating(movie.rating_kp)}` : "",
+            kinopoiskRating(movie.rating_kp, "КП"),
             formatRating(movie.rating_tmdb) ? `TMDB ${formatRating(movie.rating_tmdb)}` : "",
           ].filter(Boolean);
           return (
@@ -330,7 +336,14 @@ export function Catalog() {
                 {STATUS_LABEL[movie.status] ? <span className="tag">{STATUS_LABEL[movie.status]}</span> : null}
                 <h2>{displayTitle(movie)}</h2>
                 {secondaryTitle(movie) ? <p className="sub">{secondaryTitle(movie)}</p> : null}
-                <p className="meta">{meta.join(" · ")}</p>
+                <p className="meta">
+                  {meta.map((part, index) => (
+                    <span key={index}>
+                      {index ? " · " : null}
+                      {part}
+                    </span>
+                  ))}
+                </p>
               </div>
             </Link>
           );

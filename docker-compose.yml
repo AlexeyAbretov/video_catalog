@@ -54,8 +54,14 @@ services:
 
   web:
     build: ./web
+    environment:
+      TLS_HOSTS: ${TLS_HOSTS:-}
+      TLS_DNS_NAME: ${TLS_DNS_NAME:-}
     ports:
       - "0.0.0.0:${WEB_PORT:-8080}:80"
+      - "0.0.0.0:${WEB_TLS_PORT:-8443}:443"
+    volumes:
+      - ./certs:/certs
     depends_on:
       vharvest:
         condition: service_healthy
