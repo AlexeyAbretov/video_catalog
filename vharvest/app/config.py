@@ -18,6 +18,7 @@ class Settings:
     scan_token: str
     scan_cron: str
     smb_host: str
+    smb_client_host: str
     min_file_bytes: int
     poster_dir: str
     tmdb_delay: float
@@ -50,6 +51,7 @@ def load_settings() -> Settings:
         scan_token=os.environ.get("SCAN_TOKEN", ""),
         scan_cron=os.environ.get("SCAN_CRON", "0 3 * * *"),
         smb_host=os.environ.get("SMB_HOST", "Keenetic-1601"),
+        smb_client_host=os.environ.get("SMB_CLIENT_HOST") or os.environ.get("SMB_HOST", "Keenetic-1601"),
         min_file_bytes=int(os.environ.get("MIN_FILE_BYTES", "52428800")),
         poster_dir=os.environ.get("POSTER_DIR", "/posters"),
         tmdb_delay=float(os.environ.get("TMDB_DELAY", "0.3")),

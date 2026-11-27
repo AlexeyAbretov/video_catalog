@@ -28,6 +28,7 @@ services:
       SCAN_TOKEN: ${SCAN_TOKEN}
       SCAN_CRON: ${SCAN_CRON:-0 3 * * *}
       SMB_HOST: ${SMB_HOST:-Keenetic-1601}
+      SMB_CLIENT_HOST: ${SMB_CLIENT_HOST:-}
       MIN_FILE_BYTES: ${MIN_FILE_BYTES:-52428800}
       SHARE_MOUNTS: /media/adata=ADATA SC610;/media/kingston=KINGSTON
       POSTER_DIR: /posters

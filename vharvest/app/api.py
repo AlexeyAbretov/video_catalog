@@ -75,11 +75,12 @@ def _genres(movie: Movie) -> list[dict]:
 
 def _paths(movie: Movie) -> dict:
     folder = parent_relative(movie.relative_path)
+    client = settings.smb_client_host
     return {
         "unc_path": unc_path(settings.smb_host, movie.share_name, movie.relative_path),
         "folder_unc": unc_path(settings.smb_host, movie.share_name, folder),
-        "smb_url": smb_url(settings.smb_host, movie.share_name, movie.relative_path),
-        "folder_smb_url": smb_dir_url(settings.smb_host, movie.share_name, folder),
+        "smb_url": smb_url(client, movie.share_name, movie.relative_path),
+        "folder_smb_url": smb_dir_url(client, movie.share_name, folder),
     }
 
 

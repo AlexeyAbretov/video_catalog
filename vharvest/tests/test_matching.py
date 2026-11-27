@@ -56,5 +56,6 @@ class PathTests(unittest.TestCase):
         self.assertEqual(playlist_filename("   "), "movie.m3u")
 
 
+
 if __name__ == "__main__":
     unittest.main()

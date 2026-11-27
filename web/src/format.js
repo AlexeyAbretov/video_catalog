@@ -16,6 +16,29 @@ export function detectDevice() {
   return "windows";
 }
 
+function encodeUncForSearchMs(unc) {
+  return String(unc)
+    .trim()
+    .replace(/\\/g, "%5C")
+    .replace(/ /g, "%20");
+}
+
+// smb:// в браузере на Windows не зарегистрирован. explorer /select из HTTPS недоступен — только
+// search-ms: папка в location, имя файла во втором crumb (близко к выделению, не синяя рамка /select).
+export function windowsFolderUrl(folderUnc, fileName) {
+  let path = String(folderUnc || "").trim();
+  if (!path) return "";
+  if (!path.endsWith("\\")) path += "\\";
+  const location = encodeUncForSearchMs(path);
+  const title = encodeURIComponent("Каталог фильмов");
+  const base = fileBaseName(fileName);
+  if (base) {
+    const fileTerm = encodeURIComponent(base);
+    return `search-ms:displayname=${title}&crumb=filename%3A${fileTerm}&crumb=location:${location},include,nonrecursive&`;
+  }
+  return `search-ms:displayname=${title}&query=*&crumb=location:${location},include,nonrecursive&`;
+}
+
 export function videoMime(fileName) {
   const base = String(fileName || "").replace(/\\/g, "/").split("/").pop() || "";
   const dot = base.lastIndexOf(".");
@@ -23,17 +46,15 @@ export function videoMime(fileName) {
   return VIDEO_MIME[ext] || "video/mp4";
 }
 
-function intentExtra(value) {
-  return encodeURIComponent(value).replace(/[!'()*]/g, (ch) => `%${ch.charCodeAt(0).toString(16).toUpperCase()}`);
-}
-
 function fileBaseName(fileName) {
   return String(fileName || "").replace(/[\r\n]/g, " ").replace(/\\/g, "/").split("/").pop()?.trim() || "";
 }
 
-// VLC принимает smb только вместе с MIME-типом. Голая ссылка из Chrome не совпадает с фильтром, и нажатие пропадает.
-// Имя файла уходит отдельным extra: свой разбор пути плеер показывает кракозябрами.
-export function androidVlcUrl(smbUrl, fileName) {
+function intentExtra(value) {
+  return encodeURIComponent(value).replace(/[!'()*]/g, (ch) => `%${ch.charCodeAt(0).toString(16).toUpperCase()}`);
+}
+
+function androidSmbIntent(smbUrl, { mime, packageId, title, directory }) {
   let parsed;
   try {
     parsed = new URL(smbUrl);
@@ -41,11 +62,81 @@ export function androidVlcUrl(smbUrl, fileName) {
     return smbUrl;
   }
   if (parsed.protocol !== "smb:") return smbUrl;
-  const target = `${parsed.host}${parsed.pathname}${parsed.search}`;
+  let path = parsed.pathname;
+  if (directory && !path.endsWith("/")) path += "/";
+  const target = `${parsed.host}${path}${parsed.search}`;
+  const parts = [
+    "action=android.intent.action.VIEW",
+    "scheme=smb",
+    "category=android.intent.category.BROWSABLE",
+    "category=android.intent.category.DEFAULT",
+  ];
+  if (mime) parts.push(`type=${mime}`);
+  if (packageId) parts.push(`package=${packageId}`);
+  if (title) parts.push(`S.title=${intentExtra(title)}`);
+  return `intent://${target}#Intent;${parts.join(";")};end`;
+}
+
+// VLC принимает smb только вместе с MIME-типом. Голая ссылка из Chrome не совпадает с фильтром, и нажатие пропадает.
+// Имя файла уходит отдельным extra: свой разбор пути плеер показывает кракозябрами.
+export function androidVlcUrl(smbUrl, fileName) {
   const mime = videoMime(fileName);
   const name = fileBaseName(fileName);
-  const title = name ? `;S.title=${intentExtra(name)}` : "";
-  return `intent://${target}#Intent;action=android.intent.action.VIEW;scheme=smb;type=${mime};package=org.videolan.vlc${title};end`;
+  return androidSmbIntent(smbUrl, { mime, packageId: "org.videolan.vlc", title: name || "" });
+}
+
+const ANDSMB_PACKAGE = "lysesoft.andsmb";
+const MIXPLORER_PACKAGE = "com.mixplorer";
+
+function smbAndsmbParts(smbUrl) {
+  let parsed;
+  try {
+    parsed = new URL(smbUrl);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== "smb:") return null;
+  const segments = parsed.pathname.split("/").filter(Boolean).map((part) => decodeURIComponent(part));
+  const port = parsed.port || "445";
+  const authority = `${parsed.hostname}:${port}`;
+  const remotePath = segments.length ? `/${segments.join("/")}` : "/";
+  return { authority, remotePath };
+}
+
+function androidAndsmbFolderIntent(folderSmbUrl) {
+  const parts = smbAndsmbParts(folderSmbUrl);
+  if (!parts) return "";
+  const remote = encodeURIComponent(parts.remotePath);
+  return `intent://${parts.authority}#Intent;action=android.intent.action.VIEW;scheme=smb;package=${ANDSMB_PACKAGE};S.remote_folder=${remote};end`;
+}
+
+function androidMixplorerFolderIntent(folderSmbUrl) {
+  const path = encodeURIComponent(String(folderSmbUrl || "").trim());
+  if (!path) return "";
+  return `intent://#Intent;action=com.mixplorer.ACTION_OPEN_FOLDER;package=${MIXPLORER_PACKAGE};S.path=${path};end`;
+}
+
+// CX и большинство проводников не принимают smb из Chrome. AndSMB — см. lysesoft.com/andsmb/intent.html
+export async function openAndroidFolder(folderSmbUrl, onNote) {
+  const mode = (import.meta.env.VITE_ANDROID_FOLDER_APP || "andsmb").toLowerCase();
+  const intent =
+    mode === "mixplorer" ? androidMixplorerFolderIntent(folderSmbUrl) : androidAndsmbFolderIntent(folderSmbUrl);
+  if (!intent) {
+    onNote?.("Ссылку на папку не собрать — скопируйте smb-путь вручную");
+    return false;
+  }
+  try {
+    await navigator.clipboard.writeText(folderSmbUrl);
+  } catch {
+    /* буфер не обязателен */
+  }
+  window.location.assign(intent);
+  onNote?.(
+    mode === "mixplorer"
+      ? "Открываем папку в MiXplorer…"
+      : "Открываем папку в AndSMB… при первом входе приложение может спросить логин шары",
+  );
+  return true;
 }
 
 export function filmCount(count) {

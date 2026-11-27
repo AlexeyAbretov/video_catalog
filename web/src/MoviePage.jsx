@@ -1,7 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { getMovie } from "./api";
-import { STATUS_LABEL, androidVlcUrl, detectDevice, displayTitle, formatDuration, formatRating, secondaryTitle } from "./format";
+import {
+  STATUS_LABEL,
+  androidVlcUrl,
+  openAndroidFolder,
+  detectDevice,
+  displayTitle,
+  formatDuration,
+  formatRating,
+  secondaryTitle,
+  windowsFolderUrl,
+} from "./format";
 
 function kinopoiskRating(value, label) {
   const rating = formatRating(value);
@@ -147,16 +157,27 @@ export function MoviePage() {
             В плеер
           </a>
         )}
-        {device !== "windows" ? (
-          <a className="play secondary" href={movie.folder_smb_url}>
+        {device === "android" ? (
+          <button
+            type="button"
+            className="play secondary"
+            onClick={() => openAndroidFolder(movie.folder_smb_url, setNote)}
+          >
+            Открыть папку
+          </button>
+        ) : (
+          <a
+            className="play secondary"
+            href={device === "windows" ? windowsFolderUrl(movie.folder_unc, movie.file_name) : movie.folder_smb_url}
+          >
             Открыть папку
           </a>
-        ) : null}
+        )}
         <p className="muted">
           {device === "windows"
-            ? "«В плеер» скачивает короткий список для VLC или MPC-HC: файл читается с шары Keenetic. Папку вставьте в адресную строку Проводника."
+            ? "«В плеер» скачивает короткий список для VLC или MPC-HC: файл читается с шары Keenetic. «Открыть папку» ищет этот файл в папке на шаре (как Win+E с поиском по имени, не как explorer /select). Если путь не подхватился, скопируйте UNC файла и в Проводнике вставьте его в адресную строку."
             : device === "android"
-              ? "«В плеер» открывает файл в VLC по ссылке smb://. Шара должна быть доступна на этом телефоне. «Открыть папку» — ссылка smb:// для проводника."
+              ? "«В плеер» — VLC. «Открыть папку» открывает каталог в AndSMB (`remote_folder` — только папка, не файл). `SMB_CLIENT_HOST` — IP как в AndSMB."
               : "Ссылки smb:// открывают файл в VLC или IINA и папку в Finder или CX Проводнике, если шара уже доступна на этом устройстве."}
         </p>
         {note ? <p className="note">{note}</p> : null}

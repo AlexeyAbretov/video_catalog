@@ -35,7 +35,7 @@
 
 Разбор имени не ходит в сеть: это `filenames.py` и промпт в `providers.py`. Сеть карточки — `enrich.py` и клиенты в `providers.py`. Порог уверенности не размазывай по `enrich.py`: его считает `matching.classify`.
 
-Путь для плеера собирает `paths.py`. Страница только выбирает, какой путь показать: Windows — m3u, macOS — `smb://`, Android — тот же `smb://` через intent VLC в `format.js`, имя файла в extra `title`.
+Путь для плеера собирает `paths.py` (`SMB_HOST` для UNC, `SMB_CLIENT_HOST` для smb). Страница только выбирает, какой путь показать: Windows — m3u и `search-ms:` в `format.js`, macOS — `smb://`, Android — intent VLC для файла, AndSMB для папки (`VITE_ANDROID_FOLDER_APP` для MiXplorer).
 
 Новая надпись для человека — по-русски, в компоненте страницы.
 
