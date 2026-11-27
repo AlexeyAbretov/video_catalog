@@ -1,7 +1,7 @@
 import unittest
 
 from app.matching import classify, score_match, similarity, yo_variants
-from app.paths import parent_relative, smb_dir_url, smb_url, unc_path
+from app.paths import parent_relative, playlist_filename, smb_dir_url, smb_url, unc_path
 
 
 class MatchTests(unittest.TestCase):
@@ -45,6 +45,15 @@ class PathTests(unittest.TestCase):
         self.assertNotIn(" ", url)
         folder = smb_dir_url("Keenetic-1601", "KINGSTON", "Die Hard")
         self.assertTrue(folder.endswith("/"))
+
+    def test_playlist_filename_uses_video_stem(self):
+        self.assertEqual(
+            playlist_filename("Paul (2011) BDRip.mkv"),
+            "Paul (2011) BDRip.m3u",
+        )
+        self.assertEqual(playlist_filename("Жмот (2016).mkv"), "Жмот (2016).m3u")
+        self.assertEqual(playlist_filename("dir/film.avi"), "film.m3u")
+        self.assertEqual(playlist_filename("   "), "movie.m3u")
 
 
 if __name__ == "__main__":

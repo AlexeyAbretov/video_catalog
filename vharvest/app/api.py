@@ -2,6 +2,7 @@ import os
 import secrets
 from datetime import datetime
 from typing import Annotated
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from fastapi.responses import FileResponse, Response
@@ -12,7 +13,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.config import settings
 from app.db import Actor, Genre, Movie, MovieActor, SessionLocal, movie_genres
 from app.filenames import parse_release, year_conflicts
-from app.paths import parent_dir_name, parent_relative, smb_dir_url, smb_url, unc_path
+from app.paths import parent_dir_name, parent_relative, playlist_filename, smb_dir_url, smb_url, unc_path
 from app.posters import openable_poster
 from app.scan_service import STATE, start_reset, start_scan
 
@@ -24,6 +25,14 @@ _POSTER_TYPES = {
     ".png": "image/png",
     ".webp": "image/webp",
 }
+
+
+def _attachment(name: str) -> str:
+    ascii_name = "".join(ch if 32 < ord(ch) < 127 and ch not in '"\\' else "_" for ch in name)
+    if not any(ch.isalnum() for ch in ascii_name):
+        ascii_name = "movie.m3u"
+    encoded = quote(name, safe="")
+    return f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{encoded}"
 
 
 def get_db():
@@ -314,8 +323,9 @@ def playlist(movie_id: int, db: Session = Depends(get_db)):
     title = (movie.title_ru or movie.title_en or movie.file_name).replace("\r", " ").replace("\n", " ")
     target = unc_path(settings.smb_host, movie.share_name, movie.relative_path)
     body = f"\ufeff#EXTM3U\n#EXTINF:-1,{title}\n{target}\n"
+    name = playlist_filename(movie.file_name)
     return Response(
         content=body.encode("utf-8"),
         media_type="audio/x-mpegurl",
-        headers={"Content-Disposition": 'attachment; filename="movie.m3u"'},
+        headers={"Content-Disposition": _attachment(name)},
     )

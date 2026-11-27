@@ -38,3 +38,13 @@ def smb_dir_url(host: str, share: str, relative: str) -> str:
     if not url.endswith("/"):
         url += "/"
     return url
+
+
+def playlist_filename(file_name: str) -> str:
+    base = file_name.replace("\\", "/").rsplit("/", 1)[-1].strip()
+    dot = base.rfind(".")
+    stem = base[:dot] if dot > 0 else base
+    stem = " ".join(stem.replace("\r", " ").replace("\n", " ").split()).strip(" .")
+    if not stem:
+        return "movie.m3u"
+    return stem + ".m3u"
